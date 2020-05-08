@@ -198,7 +198,10 @@ class UploadVersionPlugin(HookBaseClass):
         """
 
         publisher = self.parent
-        path = item.properties["path"]
+        path = item.properties.get("publish_path")
+        if not os.path.exists(path):
+            # Likely publishing locally, so try to use local path:
+            path = item.properties.path
 
         # allow the publish name to be supplied via the item properties. this is
         # useful for collectors that have access to templates and can determine
@@ -211,7 +214,9 @@ class UploadVersionPlugin(HookBaseClass):
 
             # use the path's filename as the publish name
             path_components = publisher.util.get_file_path_components(path)
-            publish_name = path_components["filename"]
+            filename = path_components["filename"]
+            publish_name = filename.replace(
+                '.{}'.format(filename.split('.')[-1]), '')
 
         self.logger.debug("Publish name: %s" % (publish_name,))
 
@@ -221,7 +226,7 @@ class UploadVersionPlugin(HookBaseClass):
             "code": publish_name,
             "description": item.description,
             "entity": self._get_version_entity(item),
-            "sg_task": item.context.task,
+            "sg_task": item.context.task
         }
 
         if "sg_publish_data" in item.properties:
@@ -238,9 +243,9 @@ class UploadVersionPlugin(HookBaseClass):
                 "action_show_more_info": {
                     "label": "Version Data",
                     "tooltip": "Show the complete Version data dictionary",
-                    "text": "<pre>%s</pre>" % (pprint.pformat(version_data),),
+                    "text": "<pre>%s</pre>" % (pprint.pformat(version_data),)
                 }
-            },
+            }
         )
 
         # Create the version
@@ -263,13 +268,20 @@ class UploadVersionPlugin(HookBaseClass):
                 upload_path = path
 
             self.parent.shotgun.upload(
-                "Version", version["id"], upload_path, "sg_uploaded_movie"
+                "Version",
+                version["id"],
+                upload_path,
+                "sg_uploaded_movie"
             )
         elif thumb:
             # only upload thumb if we are not uploading the content. with
             # uploaded content, the thumb is automatically extracted.
             self.logger.info("Uploading thumbnail...")
-            self.parent.shotgun.upload_thumbnail("Version", version["id"], thumb)
+            self.parent.shotgun.upload_thumbnail(
+                "Version",
+                version["id"],
+                thumb
+            )
 
         self.logger.info("Upload complete!")
 
